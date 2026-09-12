@@ -1,7 +1,8 @@
 # Normal Music Converter
 
 A command-line converter organised as explicit release workflows. The first
-workflow, `single-flac-album`, converts one album-length FLAC plus a CUE sheet
+workflow, `single-flac-album`, converts either one album-length FLAC plus a CUE
+sheet or an already split FLAC release (including `Disc 1`/`Disc 2` folders)
 into tagged AAC/M4A tracks for Apple Music and iPhone.
 
 ## Status
@@ -23,6 +24,17 @@ Then run:
 music-converter single-flac-album "/mnt/c/path/to/source"
 ```
 
+To validate a completed multi-disc release without changing any files:
+
+```bash
+music-converter verify-iphone-album "/mnt/f/Music/Album"
+```
+
+This checks that every required tag (title, artist, album, album artist, date,
+track, and disc) is populated and consistent, agrees with the numbered file
+names, and uses an iPhone Music-library format (AAC/ALAC M4A or MP3).  FLAC is
+reported as not transferable to the iPhone Music library.
+
 To inspect the detected album and FFmpeg work without creating files, add
 `--plan`.
 
@@ -30,7 +42,10 @@ By default the output directory is created beneath `/mnt/f/Music`. To place it
 under another existing directory, use `--output-root`, for example
 `--output-root "/mnt/f/Music"`.
 
-The source directory is never modified. Successful conversions will be written
+For a split release, point the same command at the album directory; it must
+contain exactly one `cover.jpg`/`folder.jpg` and the separately tagged FLAC
+tracks, optionally grouped in `Disc N` directories. The source directory is
+never modified. Successful conversions will be written
 to a clearly named sibling output directory. Existing outputs will not be
 overwritten.
 

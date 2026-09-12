@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from music_converter.iphone_verification import verify_iphone_album
 from music_converter.workflows.single_flac_album import SingleFlacAlbumWorkflow
 
 
@@ -21,6 +22,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Directory in which to create the named album output directory.",
     )
+    verify = subparsers.add_parser(
+        "verify-iphone-album",
+        help="Check a multi-disc album's metadata and iPhone Music-library compatibility.",
+    )
+    verify.add_argument("album_directory", type=Path)
     single_flac.add_argument(
         "--plan",
         action="store_true",
@@ -41,6 +47,19 @@ def main(argv: list[str] | None = None) -> int:
             )
         except ValueError as error:
             parser.error(str(error))
+    if args.workflow == "verify-iphone-album":
+        try:
+            report = verify_iphone_album(args.album_directory)
+        except ValueError as error:
+            parser.error(str(error))
+        print(f"Checked {report.tracks_checked} track(s).")
+        if report.ready_for_iphone:
+            print("Ready for iPhone transfer.")
+            return 0
+        print(f"Not ready for iPhone transfer: {len(report.issues)} issue(s).")
+        for issue in report.issues:
+            print(f"- {issue.path}: {issue.message}")
+        return 1
     return 0
 
 

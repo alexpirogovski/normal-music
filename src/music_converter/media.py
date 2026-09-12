@@ -35,6 +35,25 @@ def probe_duration(path: Path) -> float:
     return duration
 
 
+def probe_tags(path: Path) -> dict[str, str]:
+    """Return normalized container tags for one audio file."""
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format_tags", "-of", "json", str(path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode:
+        raise ValueError(f"ffprobe could not read {path.name}: {result.stderr.strip()}")
+    try:
+        return {
+            str(key).lower(): str(value).strip()
+            for key, value in json.loads(result.stdout)["format"].get("tags", {}).items()
+        }
+    except (KeyError, TypeError, json.JSONDecodeError) as error:
+        raise ValueError(f"ffprobe returned no usable metadata for {path.name}.") from error
+
+
 def build_ffmpeg_command(source: Path, cover: Path, track: ConversionTrack) -> list[str]:
     metadata = track.metadata
     command = [

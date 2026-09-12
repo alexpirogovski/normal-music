@@ -14,3 +14,7 @@ class CliTests(unittest.TestCase):
             ["single-flac-album", "/music/album", "--output-root", "/music/output"]
         )
         self.assertEqual(str(args.output_root), "/music/output")
+
+    def test_verify_iphone_album_accepts_album_directory(self) -> None:
+        args = build_parser().parse_args(["verify-iphone-album", "/music/album"])
+        self.assertEqual(str(args.album_directory), "/music/album")
