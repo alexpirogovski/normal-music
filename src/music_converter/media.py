@@ -54,18 +54,21 @@ def probe_tags(path: Path) -> dict[str, str]:
         raise ValueError(f"ffprobe returned no usable metadata for {path.name}.") from error
 
 
-def build_ffmpeg_command(source: Path, cover: Path, track: ConversionTrack) -> list[str]:
+def build_ffmpeg_command(source: Path, cover: Path | None, track: ConversionTrack) -> list[str]:
     metadata = track.metadata
     command = [
         "ffmpeg", "-hide_banner", "-nostdin", "-loglevel", "error", "-ss", f"{track.start_seconds:.6f}",
-        "-t", f"{track.duration_seconds:.6f}", "-i", str(source), "-i", str(cover),
-        "-map", "0:a:0", "-map", "1:v:0", "-c:a", "aac", "-b:a", "256k", "-c:v", "mjpeg",
-        "-disposition:v:0", "attached_pic", "-metadata", f"title={metadata.title}",
+        "-t", f"{track.duration_seconds:.6f}", "-i", str(source), "-map", "0:a:0", "-c:a", "aac", "-b:a", "256k",
+    ]
+    if cover:
+        command.extend(["-i", str(cover), "-map", "1:v:0", "-c:v", "mjpeg", "-disposition:v:0", "attached_pic"])
+    command.extend([
+        "-metadata", f"title={metadata.title}",
         "-metadata", f"track={metadata.track_number}/{metadata.track_total}",
         "-metadata", f"album={metadata.album_title}", "-metadata", f"album_artist={metadata.album_artist}",
         "-metadata", f"artist={metadata.track_artist}",
         "-metadata", f"disc={metadata.disc_number}/{metadata.disc_total}",
-    ]
+    ])
     if metadata.year:
         command.extend(["-metadata", f"date={metadata.year}"])
     command.extend(["-movflags", "+faststart", str(track.output_path)])

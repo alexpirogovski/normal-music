@@ -73,18 +73,18 @@ class SingleFlacAlbumWorkflow:
 
     def _run_multiple_tracks(self, source_directory: Path, output_root: Path | None, plan_only: bool) -> int:
         """Convert separately ripped FLAC tracks, including ``Disc N`` folders."""
-        flacs = sorted(path for path in source_directory.rglob("*") if path.is_file() and path.suffix.casefold() == ".flac")
-        if not flacs:
-            raise ValueError(f"No FLAC tracks found in {source_directory}.")
+        audio_files = sorted(path for path in source_directory.rglob("*") if path.is_file() and path.suffix.casefold() in {".flac", ".mp3"})
+        if not audio_files:
+            raise ValueError(f"No FLAC or MP3 tracks found in {source_directory}.")
         cover = self._find_cover(source_directory)
-        disc_paths = sorted({path.parent for path in flacs})
+        disc_paths = sorted({path.parent for path in audio_files})
         if len(disc_paths) > 1 and any(not re.fullmatch(r"Disc \d+", path.name) for path in disc_paths):
             raise ValueError("Multiple-track albums may use only 'Disc N' directories beneath the source directory.")
         disc_numbers = {directory: index for index, directory in enumerate(disc_paths, start=1)}
         plan: list[ConversionTrack] = []
         sources: dict[Path, Path] = {}
         for directory in disc_paths:
-            tracks = sorted(path for path in flacs if path.parent == directory)
+            tracks = sorted(path for path in audio_files if path.parent == directory)
             for number, source in enumerate(tracks, start=1):
                 tags = probe_tags(source)
                 missing = [tag for tag in ("title", "artist", "album") if not tags.get(tag)]
@@ -109,7 +109,7 @@ class SingleFlacAlbumWorkflow:
         destination = output_directory(source_directory, output_root)
         self._validate_destination(destination, plan)
         print(f"Album: {plan[0].metadata.album_artist} — {plan[0].metadata.album_title}", flush=True)
-        print(f"Input: {len(plan)} FLAC track(s); cover: {cover.name}", flush=True)
+        print(f"Input: {len(plan)} audio track(s); cover: {cover.name if cover else 'none'}", flush=True)
         print(f"Output: {destination}", flush=True)
         if plan_only:
             return 0
@@ -130,16 +130,16 @@ class SingleFlacAlbumWorkflow:
         print(f"Created: {destination}", flush=True)
         return 0
 
-    def _find_cover(self, directory: Path) -> Path:
+    def _find_cover(self, directory: Path) -> Path | None:
         covers = [
             path for path in directory.iterdir() if path.is_file()
             and path.stem.casefold() in {"cover", "folder"}
             and path.suffix.casefold() in {".jpg", ".jpeg"}
         ]
-        if len(covers) != 1:
-            found = ", ".join(path.name for path in covers) or "none"
-            raise ValueError(f"Expected exactly one cover image in {directory}; found: {found}.")
-        return covers[0]
+        if len(covers) > 1:
+            found = ", ".join(path.name for path in covers)
+            raise ValueError(f"Expected at most one cover image in {directory}; found: {found}.")
+        return covers[0] if covers else None
 
     def _cue_titles(self, cue: CueAlbum) -> list[str]:
         missing = [str(track.number) for track in cue.tracks if not track.title]
